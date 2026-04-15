@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <!-- 手机全屏适配核心配置 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>深海花语·花卉人格测试</title>
+  <!-- 引入治愈系手写字体 + 圆润无衬线字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ====================== 全局基础重置 ====================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent; /* 清除手机点击高亮 */
+    }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden; /* 禁止滚动，全屏固定 */
+      font-family: 'Noto Sans SC', sans-serif; /* 正文圆润无衬线字体 */
+      background: #0a192f;
+      color: #000000;
+    }
+    /* 页面容器：全屏、相对定位、隐藏横向滚动 */
+    .page {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      top: 0;
+      left: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      display: none; /* 默认隐藏所有页面 */
+      transition: all 0.8s ease-in-out; /* 页面切换柔滑动效 */
+      overflow-x: hidden;
+    }
+    .page.active {
+      display: block; /* 激活页面显示 */
+      animation: pageFadeIn 0.8s ease forwards;
+    }
+    /* 标题专用治愈手写体 */
+    .handwriting {
+      font-family: 'Ma Shan Zheng', cursive !important;
+    }
+
+    /* ====================== 核心动效动画 ====================== */
+    /* 页面淡入动效 */
+    @keyframes pageFadeIn {
+      0% { opacity: 0; transform: translateX(50px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+    /* 选项卡片呼吸悬浮动效（未选中） */
+    @keyframes cardBreathe {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.02); }
+    }
+    /* 文字打字机动效 */
+    @keyframes typing {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    /* 文字逐行淡入动效 */
+    @keyframes fadeInLine {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    /* 结果页人格名称光晕环绕 */
+    @keyframes glowRing {
+      0% { box-shadow: 0 0 5px rgba(180, 184, 232, 0.3); }
+      50% { box-shadow: 0 0 20px rgba(180, 184, 232, 0.8); }
+      100% { box-shadow: 0 0 5px rgba(180, 184, 232, 0.3); }
+    }
+    /* 背景光效缓慢流动 */
+    @keyframes bgFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* ====================== 通用UI组件 ====================== */
+    /* 半透明磨砂卡片（所有选项/容器通用） */
+    .frosted-card {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px); /* 磨砂核心效果 */
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(136, 160, 173, 0.2); /* 柔光光晕 */
+      transition: all 0.3s ease;
+    }
+    /* 花瓣定制进度条 移除overflow防止花朵被裁剪 */
+    .flower-progress {
+      width: 80%;
+      height: 8px;
+      margin: 20px auto;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      position: relative;
+    }
+    .flower-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #a8c0ff, #c4e0e5); /* 水蓝色花瓣渐变 */
+      border-radius: 10px;
+      transition: width 0.5s ease;
+      position: relative;
+    }
+    /* 进度条花朵放大，完整展示 */
+    .flower-progress-bar::after {
+      content: "🌸";
+      position: absolute;
+      right: -25px;
+      top: -18px;
+      font-size: 24px; /* 花朵放大 */
+    }
+    /* 加载页进度条专属：移至页面最底部 */
+    #loadingPage .flower-progress {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+    }
+    /* ========== 修改2：仅结果页显示保存按钮，其他页面全部隐藏 ========== */
+    .global-btn {
+      display: none;
+    }
+    #resultPage .global-btn {
+      display: block;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 999;
+      padding: 8px 12px;
+      font-size: 14px;
+      border: 1px solid rgba(180, 184, 232, 0.4);
+      background: rgba(255,255,255,0.1);
+    }
+    /* 按钮通用样式 全局字号再调大 */
+    .btn {
+      padding: 14px 32px;
+      border-radius: 30px;
+      border: none;
+      background: linear-gradient(90deg, #a8c0ff, #c4e0e5);
+      color: #000000;
+      font-weight: 500;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn:hover { transform: scale(1.05); }
+    /* 结果页功能按钮组 */
+    .result-buttons {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    /* 输入框文字黑色+字号 */
+    input {
+      color: #000000 !important;
+      font-size: 20px !important;
+    }
+    /* 全局标题字号 */
+    h1.handwriting { font-size: 44px !important; }
+    h2.handwriting { font-size: 32px !important; }
+    /* 结果页移除磨砂，原生背景展示 */
+    #personalityDesc {
+      padding: 25px;
+      font-size: 19px;
+      line-height: 1.8;
+      text-align: center;
+      width: 100%;
+      color: #000000;
+    }
+    /* 加载页文字布局：页面上方 */
+    #loadingPage .loading-content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 20px;
+      padding-top: 80px;
+    }
+    /* ========== 修改3：答题页按钮组正常显示 ========== */
+    .quiz-buttons {
+      display: flex !important;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- 仅结果页显示的保存按钮 -->
+  <button class="btn global-btn frosted-card" onclick="saveResult()">保存结果</button>
+
+  <!-- ====================== 1. 加载页 ====================== -->
+  <div id="loadingPage" class="page active" style="background-image: url('https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E8%8A%B1%E7%9B%86%E6%B5%87%E6%B0%B4.png')">
+    <div class="loading-content">
+      <h1 class="handwriting" style="margin-bottom: 40px; text-shadow: 0 0 10px rgba(180, 184, 232, 0.5);">深海花园</h1>
+      <!-- ========== 修改1：已删除「正在唤醒花海精灵」文字 ========== -->
+    </div>
+    <!-- 水蓝色加载进度条（底部） -->
+    <div class="flower-progress">
+      <div id="loadingBar" class="flower-progress-bar" style="width: 0%;"></div>
+    </div>
+  </div>
+
+  <!-- ====================== 2. 开始界面 ====================== -->
+  <div id="startPage" class="page" style="background-image: url('https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E5%B0%8F%E5%A5%B3%E5%AD%A9%E6%B5%87%E6%B0%B4.png')">
+    <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;">
+      <h1 class="handwriting" style="margin-bottom: 60px; text-shadow: 0 0 15px rgba(180, 184, 232, 0.6);">花卉人格测试</h1>
+      <!-- 昵称输入框 -->
+      <input id="nickname" type="text" class="frosted-card" 
+             style="width: 70%; padding: 15px 20px; outline: none; text-align: center; margin-bottom: 40px;"
+             placeholder="请输入你的昵称" maxlength="10">
+      <!-- 纯按钮样式，无花图案 -->
+      <button class="btn" onclick="startTest()">进入测试</button>
+    </div>
+  </div>
+
+  <!-- ====================== 3. 测试题目页 ====================== -->
+  <div id="quizPage" class="page">
+    <div style="height: 100%; padding: 80px 20px 40px; display: flex; flex-direction: column; justify-content: space-between;">
+      <!-- 题目标题 无序号 -->
+      <h2 id="quizTitle" class="handwriting" style="text-align: center; margin-bottom: 30px; line-height: 1.6; text-shadow: 0 0 10px rgba(255,255,255,0.5);"></h2>
+      <!-- 花瓣进度条 -->
+      <div class="flower-progress">
+        <div id="quizProgress" class="flower-progress-bar" style="width: 0%;"></div>
+      </div>
+      <!-- 选项卡片容器 -->
+      <div id="optionsContainer" style="display: flex; flex-direction: column; gap: 15px; margin: 20px 0;">
+        <div class="option-card frosted-card" data-value="1" onclick="selectOption(this)"></div>
+        <div class="option-card frosted-card" data-value="2" onclick="selectOption(this)"></div>
+        <div class="option-card frosted-card" data-value="3" onclick="selectOption(this)"></div>
+        <div class="option-card frosted-card" data-value="4" onclick="selectOption(this)"></div>
+      </div>
+      <!-- ========== 修改3：显示上一题按钮，支持返回修改答案 ========== -->
+      <div class="quiz-buttons">
+        <button id="prevBtn" class="btn" style="padding: 10px 20px;" onclick="prevQuestion()" disabled>上一题</button>
+        <button id="nextBtn" class="btn" style="padding: 10px 20px; opacity: 0.5; pointer-events: none;">下一题</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================== 4. 结果页 ====================== -->
+  <div id="resultPage" class="page">
+    <div style="height: 100%; padding: 70px 25px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <!-- 结果标题 -->
+      <h1 class="handwriting" style="margin-bottom: 20px; text-shadow: 0 0 15px rgba(180, 184, 232, 0.7);">深海花语・花卉人格测试</h1>
+      <!-- 昵称 -->
+      <p id="resultNickname" style="font-size: 22px; margin-bottom: 30px; opacity: 0.9;"></p>
+      <!-- 人格名称 -->
+      <h2 id="personalityName" class="handwriting" style="margin-bottom: 20px; padding: 10px 25px; border-radius: 30px; animation: glowRing 3s infinite;"></h2>
+      <!-- 性格标签 -->
+      <p id="personalityTags" style="font-size: 20px; margin-bottom: 30px; padding: 8px 20px; border-radius: 20px; background: rgba(255,255,255,0.1); text-align: center;"></p>
+      <!-- 花语解读（无磨砂，原生背景） -->
+      <div id="personalityDesc" style="animation: fadeInLine 1s ease forwards;"></div>
+      
+      <!-- 重新测试+转发朋友圈 按钮 -->
+      <div class="result-buttons">
+        <button class="btn" onclick="restartTest()">重新测试</button>
+        <button class="btn" onclick="shareToMoments()">转发朋友圈</button>
+      </div>
+
+      <!-- 右下角微信二维码 -->
+      <img src="https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E5%BE%AE%E4%BF%A1%E4%BA%8C%E7%BB%B4%E7%A0%81.png" 
+           style="position: absolute; bottom: 80px; right: 20px; width: 60px; height: 60px; border-radius: 8px;">
+      <!-- 底部下载链接 -->
+      <p style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); font-size: 14px; opacity: 0.8;">👉 高清壁纸下载：占位链接（可修改）</p>
+    </div>
+  </div>
+</div>
+
+<!-- 轻柔花开音效（选中选项时播放） -->
+<audio id="flowerSound" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3" preload="auto"></audio>
+
+<script>
+  /* ====================== 核心配置区（所有可快速修改内容） ====================== */
+  // 测试题目（6题，严格原文）
+  const quizData = [
+    {
+      title: "若你是一粒花种，你想在何处发芽？",
+      options: ["安于庭院花盆，被人细心照料", "扎根在肥沃田野，与青苗为伴", "攀爬在悬崖石缝中，向阳生长", "跟随风的指引，落在旷野草地"],
+      bg: "https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E6%B7%A1%E7%B2%89%E4%BA%91%E6%B7%A1%E7%BB%BF%E8%8D%89%E5%B0%8F%E5%AD%A9%E7%BE%8A.png"
+    },
+    {
+      title: "如果可以挑选花期，你更希望？",
+      options: ["开在春日，与万物一同苏醒", "开在盛夏，在明媚阳光下盛放", "开在清秋，伴晚风与落叶轻摇", "开在寒冬，于雪地独自芬芳"],
+      bg: "https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E7%B2%89%E8%89%B2%E4%BA%91%E5%BD%A9%E7%B2%89%E8%89%B2%E8%8A%B1.png"
+    },
+    {
+      title: "你更偏爱哪种花的香气？",
+      options: ["清甜如栀子，沁人心脾", "浓郁如玫瑰，热烈坦荡", "清淡如茉莉，温柔绵长", "淡雅如百合，干净纯粹"],
+      bg: "https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E9%A2%9C%E8%89%B2%E5%BE%88%E4%BA%AE%E5%A4%A9%E9%B9%85%E6%B9%96.png"
+    },
+    {
+      title: "如果送自己一束花，你会选择？",
+      options: ["小雏菊：简单干净，自带安静力量", "向日葵：始终向着阳光，温暖明亮", "风铃草：轻盈柔软，随风轻轻摇曳", "满天星：细碎温柔，默默陪伴身旁"],
+      bg: "https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E7%8C%AB%20%E7%B2%89%E7%B4%AB%E8%89%B2%E8%8A%B1%E7%94%B0.png"
+    },
+    {
+      title: "面对生活里的小波折，你更像哪一种花？",
+      options: ["含羞草：收起锋芒，等风停再慢慢舒展", "梅花：越是清冷，越在逆境中绽放", "仙人掌：外表带刺，内心柔软却坚韧", "蒲公英：随风飘散，总能找到新的归宿"],
+      bg: "https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E8%85%8A%E8%82%A0%E8%8D%89%E5%9D%AA%E8%B7%91.png"
+    },
+    {
+      title: "你理想的 “花之居所” 是？",
+      options: ["摆满绿植的阳台，温暖明亮，烟火温柔", "热闹的街角花坛，被人驻足，温柔欣赏", "安静的林间空地，清幽自在，与世无争", "漫生野花的山坡，自在开阔，无拘无束"],
+      bg: "https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E9%A2%9C%E8%89%B2%E5%BE%88%E6%B7%A1%E5%85%94%E5%AD%90%E6%8A%AC%E5%A4%B4.png"
+    }
+  ];
+
+  // 人格配置（严格区间+原文案）
+  const personalityData = [
+    { min:6, max:8, name:"春森魔女", tags:"元气烂漫、纯真自然、治愈温暖", desc:"如春日新芽般鲜活明亮，自带天然治愈力，用纯粹与温柔，点亮身边每一段温柔时光。", bg:"https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E6%A3%AE%E4%B9%8B%E5%AD%90BG.jpg" },
+    { min:9, max:11, name:"挚爱之神", tags:"热烈赤诚、专一坚定、温柔治愈", desc:"心怀滚烫而真挚的爱意，温柔且坚定，把满心偏爱，都藏进长久的陪伴与守护里。", bg:"https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E4%B8%98%E6%AF%94%E7%89%B9%E6%83%85%E4%BA%BA%E8%8A%82BG.jpg" },
+    { min:12, max:14, name:"星落琼芳", tags:"诗意浪漫、清冷通透、梦幻理想", desc:"自带星河般的浪漫诗意，内心澄澈通透，在温柔与坚韧间，坚守着心底的美好理想。", bg:"https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E6%98%9F%E8%90%BD%E8%8A%B3%E7%90%BC%E8%83%8C%E6%99%AF.png" },
+    { min:15, max:17, name:"云梦鲸歌", tags:"自由空灵、温柔包容、纯粹通透", desc:"如云海鲸鸣般空灵温柔，心怀包容与澄澈，以纯粹本心，拥抱世间所有温柔与自由。", bg:"https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/HY_JINGYU_20.png" },
+    { min:18, max:20, name:"鹿影凝蓝", tags:"神秘灵动、静谧内敛、自由不羁", desc:"似林间灵鹿般静谧神秘，不被世俗束缚，在安静中藏着不羁灵魂与灵动本心。", bg:"https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/%E5%BD%95%E5%BD%B1%E8%83%8C%E6%99%AF.png" },
+    { min:21, max:24, name:"穹痕星溯", tags:"理性通透、自由独立、聪慧内敛", desc:"兼具清醒智慧与独立灵魂，在理性与温柔间自洽，不随波逐流，亦守内心温热。", bg:"https://raw.githubusercontent.com/tiyawuu-alt/personalty-test-picture-hub/refs/heads/main/bj01.png" }
+  ];
+
+  /* ====================== 全局状态变量 ====================== */
+  let currentQuiz = 0; // 当前题目索引
+  let userAnswers = []; // 用户答案
+  let userNickname = ""; // 用户昵称
+  const totalQuiz = quizData.length; // 总题数
+
+  /* ====================== 页面加载初始化 ====================== */
+  window.onload = function() {
+    // 模拟加载进度（静态资源无真实加载，仅视觉效果）
+    let loadProgress = 0;
+    const loadInterval = setInterval(() => {
+      loadProgress += 5;
+      document.getElementById("loadingBar").style.width = loadProgress + "%";
+      if(loadProgress >= 100) {
+        clearInterval(loadInterval);
+        switchPage("loadingPage", "startPage"); // 加载完成跳开始页
+      }
+    }, 100);
+
+    // 初始化选项卡片呼吸动效
+    initCardAnimation();
+  };
+
+  /* ====================== 核心功能函数 ====================== */
+  // 页面切换函数
+  function switchPage(hideId, showId) {
+    document.getElementById(hideId).classList.remove("active");
+    setTimeout(() => {
+      document.getElementById(showId).classList.add("active");
+    }, 300);
+  }
+
+  // 初始化选项卡片呼吸动效
+  function initCardAnimation() {
+    const cards = document.querySelectorAll(".option-card");
+    cards.forEach(card => {
+      card.style.animation = "cardBreathe 3s infinite alternate";
+      card.style.padding = "20px";
+      card.style.textAlign = "center";
+      card.style.fontSize = "19px";
+      card.style.cursor = "pointer";
+      card.style.color = "#000000";
+    });
+  }
+
+  // 开始测试
+  function startTest() {
+    userNickname = document.getElementById("nickname").value.trim();
+    if(!userNickname) {
+      alert("请输入你的昵称哦~");
+      return;
+    }
+    // 重置测试状态
+    currentQuiz = 0;
+    userAnswers = [];
+    switchPage("startPage", "quizPage");
+    renderQuiz(); // 渲染第一题
+  }
+
+  // 渲染当前题目
+  function renderQuiz() {
+    const currentData = quizData[currentQuiz];
+    // 设置题目背景
+    document.getElementById("quizPage").style.backgroundImage = `url('${currentData.bg}')`;
+    // 设置题目文字 无序号
+    document.getElementById("quizTitle").innerText = currentData.title;
+    // 设置选项文字
+    const options = document.querySelectorAll(".option-card");
+    options.forEach((card, index) => {
+      card.innerText = currentData.options[index];
+      card.classList.remove("selected");
+      card.style.transform = "scale(1)";
+      card.style.boxShadow = "0 8px 32px rgba(136, 160, 173, 0.2)";
+    });
+    // 更新进度条
+    document.getElementById("quizProgress").style.width = ((currentQuiz + 1) / totalQuiz) * 100 + "%";
+    // 控制上一题按钮状态
+    document.getElementById("prevBtn").disabled = currentQuiz === 0;
+    // 恢复已选答案
+    if(userAnswers[currentQuiz]) {
+      const selectedCard = document.querySelector(`.option-card[data-value="${userAnswers[currentQuiz]}"]`);
+      selectOption(selectedCard, true);
+    }
+  }
+
+  // 选择选项 点击后自动跳转下一题
+  function selectOption(card, isRestore = false) {
+    // 重置所有卡片
+    const cards = document.querySelectorAll(".option-card");
+    cards.forEach(c => {
+      c.classList.remove("selected");
+      c.style.transform = "scale(1)";
+      c.style.boxShadow = "0 8px 32px rgba(136, 160, 173, 0.2)";
+    });
+    // 选中当前卡片
+    card.classList.add("selected");
+    card.style.transform = "scale(1.05)"; // 选中放大1.05倍
+    card.style.boxShadow = "0 8px 40px rgba(180, 184, 232, 0.6)"; // 光晕变亮
+    // 记录答案
+    userAnswers[currentQuiz] = card.dataset.value;
+    // 非恢复状态下触发音效+粒子特效+自动下一题
+    if(!isRestore) {
+      playFlowerSound();
+      createParticles(card);
+      // 自动跳转下一题/结果
+      setTimeout(() => {
+        nextQuestion();
+      }, 500);
+    }
+  }
+
+  // 播放花开音效
+  function playFlowerSound() {
+    const sound = document.getElementById("flowerSound");
+    sound.currentTime = 0;
+    sound.play().catch(err => {});
+  }
+
+  // 创建花瓣/星光粒子特效
+  function createParticles(element) {
+    const rect = element.getBoundingClientRect();
+    const particleCount = 15;
+    for(let i=0; i<particleCount; i++) {
+      const particle = document.createElement("div");
+      particle.style.position = "fixed";
+      particle.style.width = "8px";
+      particle.style.height = "8px";
+      particle.style.background = Math.random() > 0.5 ? "#ffd700" : "#c4e0e5";
+      particle.style.borderRadius = "50%";
+      particle.style.pointerEvents = "none";
+      particle.style.zIndex = "999";
+      particle.style.left = rect.left + rect.width / 2 + "px";
+      particle.style.top = rect.top + rect.height / 2 + "px";
+      // 粒子随机运动
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 3;
+      const opacity = 0.8;
+      document.body.appendChild(particle);
+      // 粒子动画
+      let x = 0, y = 0, op = opacity;
+      const particleInterval = setInterval(() => {
+        x += Math.cos(angle) * speed;
+        y += Math.sin(angle) * speed;
+        op -= 0.02;
+        particle.style.transform = `translate(${x}px, ${y}px)`;
+        particle.style.opacity = op;
+        if(op <= 0) {
+          clearInterval(particleInterval);
+          document.body.removeChild(particle);
+        }
+      }, 20);
+    }
+  }
+
+  // 上一题
+  function prevQuestion() {
+    if(currentQuiz > 0) {
+      currentQuiz--;
+      renderQuiz();
+    }
+  }
+
+  // 下一题/查看结果
+  function nextQuestion() {
+    if(!userAnswers[currentQuiz]) {
+      alert("请选择一个选项哦~");
+      return;
+    }
+    if(currentQuiz < totalQuiz - 1) {
+      currentQuiz++;
+      renderQuiz();
+    } else {
+      calculateResult(); // 计算结果
+      switchPage("quizPage", "resultPage");
+    }
+  }
+
+  // 计算总分+匹配人格
+  function calculateResult() {
+    // 计算总分（A=1,B=2,C=3,D=4）
+    const totalScore = userAnswers.reduce((sum, num) => sum + parseInt(num), 0);
+    // 匹配对应人格
+    const result = personalityData.find(item => totalScore >= item.min && totalScore <= item.max);
+    // 渲染结果页
+    document.getElementById("resultPage").style.backgroundImage = `url('${result.bg}')`;
+    document.getElementById("resultNickname").innerText = `亲爱的 ${userNickname}，你的专属花语是`;
+    document.getElementById("personalityName").innerText = result.name;
+    document.getElementById("personalityTags").innerText = result.tags;
+    document.getElementById("personalityDesc").innerText = result.desc;
+  }
+
+  // 保存结果
+  function saveResult() {
+    if(navigator.share) {
+      navigator.share({
+        title: '深海花语·花卉人格测试',
+        text: `我是${document.getElementById("personalityName").innerText}，快来测试你的专属花语吧！`,
+        url: window.location.href
+      }).catch(err => {});
+    } else {
+      alert("结果已保存至本地，可截图分享~");
+    }
+  }
+
+  // 重新测试 直接跳转到第一题
+  function restartTest() {
+    currentQuiz = 0;
+    userAnswers = [];
+    switchPage("resultPage", "quizPage");
+    renderQuiz();
+  }
+
+  // 转发到朋友圈
+  function shareToMoments() {
+    if(navigator.share) {
+      navigator.share({
+        title: `我的深海花卉人格：${document.getElementById("personalityName").innerText}`,
+        text: `${document.getElementById("personalityDesc").innerText}`,
+        url: window.location.href
+      }).then(() => {
+        alert("转发成功！感谢分享🌸");
+      }).catch(err => {
+        alert("请点击微信右上角，选择转发到朋友圈哦~");
+      });
+    } else {
+      alert("请使用微信打开，点击右上角转发到朋友圈");
+    }
+  }
+</script>
+</body>
+</html>
